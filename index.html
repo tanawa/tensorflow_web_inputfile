@@ -1,0 +1,125 @@
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200&family=Prompt:wght@200;300;400&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    font-family: 'Kanit', sans-serif;
+    font-family: 'Prompt', sans-serif;
+}
+input {
+    font-family: 'Kanit', sans-serif;
+    font-family: 'Prompt', sans-serif;
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+.input_file {
+    font-family: 'Kanit', sans-serif;
+    font-family: 'Prompt', sans-serif;
+    overflow: hidden;
+    width: 200px;
+    height: 80px;
+    line-height: 40px;
+    border-radius: 15px;
+    color: #FFF;
+    padding: 10px 25px;
+    background: rgb(204,63,240);
+    background: linear-gradient(174deg, rgba(204,63,240,1) 0%, rgba(42,82,154,1) 100%);
+    border: 0px solid transparent;
+}
+img {
+    width: 100%;
+}
+h3 {
+    font-size: 30px;
+    margin-bottom: 0px;
+}
+</style>
+
+<center>
+    <br>
+    <h3 id="text">กรุณาใส่ภาพอาหาร</h3>
+    <h5 id="text_sub">ยังไม่ได้ระบุ</h5>
+    <img id="output">
+    <button class="input_file">
+        <p>เลือกไฟล์</p>
+        <input type="file" id="input"><br>
+    </button>
+    <canvas id="canvas" style="display:none"></canvas>
+</center>
+<script>
+const URL = "./my_model/";
+
+let model, webcam, labelContainer, maxPredictions;
+const modelURL = URL + "model.json";
+const metadataURL = URL + "metadata.json";
+  // from http://stackoverflow.com/questions/19032406/convert-html5-canvas-into-file-to-be-uploaded
+  function uploadCanvas(dataURL) {
+    var blobBin = atob(dataURL.split(',')[1]);
+    var array = [];
+    for(var i = 0; i < blobBin.length; i++) {
+        array.push(blobBin.charCodeAt(i));
+    }
+    var file=new Blob([new Uint8Array(array)], {type: 'image/png'});
+    var formdata = new FormData();
+    formdata.append("image", file);
+    
+  }
+  var input, canvas, context, output;
+
+  input = document.getElementById("input");
+  canvas = document.getElementById("canvas");
+  context = canvas.getContext('2d');
+  output = document.getElementById("output");
+
+  // กำหนด แคลตรงนี้
+    var cal = {
+        "Class 1" : " 50 แคล"
+    
+    }
+  input.addEventListener("change", async function() {
+    //input.style.display = "none"
+    var reader = new FileReader();
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+    reader.addEventListener("loadend", function(arg) {
+      var src_image = new Image();
+
+      src_image.onload = function() {
+        canvas.height = src_image.height;
+        canvas.width = src_image.width;
+        context.drawImage(src_image, 0, 0);
+        var imageData = canvas.toDataURL("image/png"); 
+        output.src = imageData;
+        uploadCanvas(imageData);
+      }
+
+      src_image.src = this.result;
+    });
+
+    reader.readAsDataURL(this.files[0]);
+
+    const prediction = await model.predict(canvas);
+    console.log(prediction)
+    let max_label = ""
+    let max_score = 0
+    for (let i = 0; i < maxPredictions; i++) {
+        if(max_score < prediction[i].probability.toFixed(2)){
+            max_score = prediction[i].probability.toFixed(2)
+            max_label = prediction[i].className
+        }
+    }
+
+    
+    document.getElementById('text').innerHTML = max_label
+    document.getElementById('text_sub').innerHTML = cal[max_label]
+    console.log(max_label+":"+max_score)
+  });
+</script>
